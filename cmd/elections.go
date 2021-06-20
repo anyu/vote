@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -94,6 +93,7 @@ func getElections() error {
 		Label:     "Pick an upcoming election",
 		Items:     eResp.Elections,
 		Templates: &template,
+		HideHelp:  true,
 	}
 	i, _, err := prompt.Run()
 	if err != nil {
@@ -122,10 +122,31 @@ func getElections() error {
 }
 
 type voterInfoResponse struct {
-	pollingLocations []string      `json:"pollingLocations"`
-	earlyVoteSites   []interface{} `json:"earlyVoteSites"`
-	dropOffLocations []interface{} `json:"dropOffLocations"`
-	contests         []interface{} `json:"contests"`
+	PollingLocations []Location `json:"pollingLocations"`
+	EarlyVoteSites   []Location `json:"earlyVoteSites"`
+	DropOffLocations []Location `json:"dropOffLocations"`
+	State            []State    `json:"state"`
+}
+
+type Location struct {
+	Address      `json:"address"`
+	PollingHours string  `json:"pollingHours"`
+	Latitude     float64 `json:"latitude"`
+	Longitude    float64 `json:"longitude"`
+	StartDate    string  `json:"startDate"`
+	EndDate      string  `json:"endDate"`
+}
+
+type State struct {
+	Name string `json:"name"`
+}
+
+type Address struct {
+	LocationName string `json:"locationName"`
+	Line1        string `json:"line1"`
+	City         string `json:"city"`
+	State        string `json:"state"`
+	Zip          string `json:"zip"`
 }
 
 func getVoterInfo(electionID, address string) error {
@@ -151,22 +172,15 @@ func getVoterInfo(electionID, address string) error {
 	defer resp.Body.Close()
 
 	var vResp voterInfoResponse
-	//err = json.NewDecoder(resp.Body).Decode(&vResp)
-	//if err != nil {
-	//	return fmt.Errorf("error decoding response: %v", err)
-	//}
-	r, err := ioutil.ReadAll(resp.Body)
+	err = json.NewDecoder(resp.Body).Decode(&vResp)
 	if err != nil {
-		return err
+		return fmt.Errorf("error decoding response: %v", err)
 	}
-	fmt.Printf(string(r))
-	err = json.Unmarshal(r, &vResp)
-	if err != nil {
-		return err
+	for _, v := range vResp.EarlyVoteSites {
+		fmt.Println(v.LocationName)
+		fmt.Println(v.Address)
+		fmt.Println(v.PollingHours)
 	}
-	//for _, v := range vResp.pollingLocations {
-	//	fmt.Printf(v)
-	//}
 
 	return nil
 }
