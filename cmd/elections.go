@@ -3,10 +3,18 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/spf13/cobra"
-	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/manifoldco/promptui"
+	"github.com/spf13/cobra"
+)
+
+const (
+	// go's magical reference date
+	rawLayout     = "2006-01-02"
+	desiredLayout = "January 2, 2006"
 )
 
 func init() {
@@ -31,6 +39,7 @@ func elections(c *cobra.Command, args []string) error {
 	}
 	return nil
 }
+
 type electionsResponse struct {
 	Elections []electionsData `json:"elections"`
 }
@@ -58,20 +67,34 @@ func getElections() error {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	var eResp electionsResponse
+	err = json.NewDecoder(resp.Body).Decode(&eResp)
 	if err != nil {
-		return err
+		return fmt.Errorf("error decoding response: %v", err)
 	}
 
-	var e electionsResponse
-	err =json.Unmarshal(body, &e)
+	electionNameToID := make(map[string]string)
+	var electionNames []string
+
+	for _, e := range eResp.Elections {
+		electionNameToID[e.Name] = e.ID
+		electionDay, err := time.Parse(rawLayout, e.ElectionDay)
+		if err != nil {
+			fmt.Printf("error parsing election day: %s", err)
+			return err
+		}
+		electionNames = append(electionNames, fmt.Sprintf("%s (%s)", e.Name, electionDay.Format(desiredLayout)))
+	}
+	prompt := promptui.Select{
+		Label: "Pick an upcoming election",
+		Items: electionNames,
+	}
+	_, result, err := prompt.Run()
 	if err != nil {
+		fmt.Printf("running prompt failed: %v", err)
 		return err
 	}
-
-	for _, election := range e.Elections {
-		fmt.Println(election)
-	}
+	fmt.Printf("You chose: %q", result)
 
 	return nil
 }
