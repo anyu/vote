@@ -42,8 +42,8 @@ func listFlights() error {
 	outDate := "anytime"
 	inDate := "anytime"
 
-	url := fmt.Sprintf("https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/browsequotes/v1.0/%s/%s/%s/%s/%s/%s?inboundpartialdate=%s",
-		country, currency, locale, origin, destination, outDate, inDate)
+	url := fmt.Sprintf("https://%s/apiservices/browsequotes/v1.0/%s/%s/%s/%s/%s/%s?inboundpartialdate=%s",
+		apiHost, country, currency, locale, origin, destination, outDate, inDate)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
