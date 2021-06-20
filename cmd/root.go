@@ -7,8 +7,8 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "fly",
-	Short: "Fly is a CLI app for getting flights",
+	Use:   "vote",
+	Short: "Vote is a CLI app for upcoming elections",
 }
 
 func Execute() {

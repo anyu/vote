@@ -1,4 +1,4 @@
-module github.com/anyu/fly
+module github.com/anyu/vote
 
 go 1.16
 
