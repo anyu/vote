@@ -1,20 +1,13 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/manifoldco/promptui"
-	"github.com/spf13/cobra"
-	"net/http"
-	"net/url"
 	"os"
-	"time"
-)
+	"strings"
 
-const (
-	// go's magical reference date
-	rawLayout     = "2006-01-02"
-	desiredLayout = "January 2, 2006"
+	"github.com/anyu/vote/internal/client"
+	"github.com/spf13/cobra"
 )
 
 func init() {
@@ -28,61 +21,39 @@ var electionsCmd = &cobra.Command{
 	RunE:  elections,
 }
 
-func init() {
-	rootCmd.AddCommand(electionsCmd)
-}
-
 func elections(c *cobra.Command, args []string) error {
-	err := getElections()
+	cl := client.New(os.Getenv("API_HOST"), os.Getenv("API_KEY"))
+
+	eResp, err := cl.GetUpcomingElections()
 	if err != nil {
 		return err
 	}
+
+	chosenElection, err := solicitElectionInput(eResp)
+	if err != nil {
+		return err
+	}
+
+	prompt := promptui.Prompt{
+		Label: "What's your address?",
+	}
+
+	address, err := prompt.Run()
+	if err != nil {
+		fmt.Printf("error running prompt: %v", err)
+		return err
+	}
+	vResp, err := cl.GetVoterInfo(chosenElection.ID, address)
+	if err != nil {
+		fmt.Printf("error getting voter info: %v", err)
+		return err
+	}
+	displayVotingInfo(vResp)
+
 	return nil
 }
 
-type electionsResponse struct {
-	Elections []electionsData `json:"elections"`
-}
-
-type electionsData struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	ElectionDay eDay   `json:"electionDay"`
-	DivisionID  string `json:"ocdDivisionId"`
-}
-
-type eDay string
-
-func (e eDay) String() string {
-	electionDay, _ := time.Parse(rawLayout, string(e))
-	return electionDay.Format(desiredLayout)
-}
-
-func getElections() error {
-	apiHost := os.Getenv("API_HOST")
-	apiKey := os.Getenv("API_KEY")
-	epElections := "elections"
-
-	params := url.Values{}
-	params.Add("key", apiKey)
-	url := fmt.Sprintf("%s/%s?"+params.Encode(), apiHost, epElections)
-
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	var eResp electionsResponse
-	err = json.NewDecoder(resp.Body).Decode(&eResp)
-	if err != nil {
-		return fmt.Errorf("error decoding response: %v", err)
-	}
-
+func solicitElectionInput(eResp *client.ElectionsResponse) (*client.Election, error) {
 	template := promptui.SelectTemplates{
 		Active:   `🗳️  {{ .Name }} |  {{ .ElectionDay.String }}`,
 		Inactive: `{{ .Name }} |  {{ .ElectionDay.String }}`,
@@ -98,89 +69,29 @@ func getElections() error {
 	i, _, err := prompt.Run()
 	if err != nil {
 		fmt.Printf("running prompt failed: %v", err)
-		return err
+		return nil, err
 	}
-	chosenElection := eResp.Elections[i]
-	fmt.Printf("You chose: %q", chosenElection.Name)
-
-	prompt2 := promptui.Prompt{
-		Label: "What's your address?",
-	}
-
-	address, err := prompt2.Run()
-	if err != nil {
-		fmt.Printf("error running prompt 2: %v", err)
-		return err
-	}
-
-	err = getVoterInfo(chosenElection.ID, address)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return &eResp.Elections[i], nil
 }
 
-type voterInfoResponse struct {
-	PollingLocations []Location `json:"pollingLocations"`
-	EarlyVoteSites   []Location `json:"earlyVoteSites"`
-	DropOffLocations []Location `json:"dropOffLocations"`
-	State            []State    `json:"state"`
-}
-
-type Location struct {
-	Address      `json:"address"`
-	PollingHours string  `json:"pollingHours"`
-	Latitude     float64 `json:"latitude"`
-	Longitude    float64 `json:"longitude"`
-	StartDate    string  `json:"startDate"`
-	EndDate      string  `json:"endDate"`
-}
-
-type State struct {
-	Name string `json:"name"`
-}
-
-type Address struct {
-	LocationName string `json:"locationName"`
-	Line1        string `json:"line1"`
-	City         string `json:"city"`
-	State        string `json:"state"`
-	Zip          string `json:"zip"`
-}
-
-func getVoterInfo(electionID, address string) error {
-	apiHost := os.Getenv("API_HOST")
-	apiKey := os.Getenv("API_KEY")
-
-	epVoterInfo := "voterinfo"
-
-	params := url.Values{}
-	params.Add("electionId", electionID)
-	params.Add("address", address)
-	params.Add("key", apiKey)
-	url := fmt.Sprintf("%s/%s?"+params.Encode(), apiHost, epVoterInfo)
-
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	var vResp voterInfoResponse
-	err = json.NewDecoder(resp.Body).Decode(&vResp)
-	if err != nil {
-		return fmt.Errorf("error decoding response: %v", err)
-	}
+func displayVotingInfo(vResp *client.VoterInfoResponse) {
 	for _, v := range vResp.EarlyVoteSites {
+		fmt.Println()
+		fmt.Println(strings.ToUpper("Your early vote site:"))
 		fmt.Println(v.LocationName)
-		fmt.Println(v.Address)
+		fmt.Printf("%s\n%s, %s, %s\n", v.Address.Line1, v.Address.City, v.Address.State, v.Address.Zip)
+		fmt.Println()
+		fmt.Println(strings.ToUpper("Polling hours:"))
 		fmt.Println(v.PollingHours)
 	}
 
-	return nil
+	for _, v := range vResp.PollingLocations {
+		fmt.Println()
+		fmt.Println(strings.ToUpper("Your vote day polling site:"))
+		fmt.Println(v.LocationName)
+		fmt.Printf("%s\n%s, %s, %s\n", v.Address.Line1, v.Address.City, v.Address.State, v.Address.Zip)
+		fmt.Println()
+		fmt.Println(strings.ToUpper("Polling hours:"))
+		fmt.Println(v.PollingHours)
+	}
 }
