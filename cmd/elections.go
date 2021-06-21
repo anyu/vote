@@ -34,13 +34,8 @@ func elections(c *cobra.Command, args []string) error {
 		return err
 	}
 
-	prompt := promptui.Prompt{
-		Label: "What's your address?",
-	}
-
-	address, err := prompt.Run()
+	address, err := solicitAddress()
 	if err != nil {
-		fmt.Printf("error running prompt: %v", err)
 		return err
 	}
 	vResp, err := cl.GetVoterInfo(chosenElection.ID, address)
@@ -72,6 +67,19 @@ func solicitElectionInput(eResp *client.ElectionsResponse) (*client.Election, er
 		return nil, err
 	}
 	return &eResp.Elections[i], nil
+}
+
+func solicitAddress() (string, error) {
+	prompt := promptui.Prompt{
+		Label: "What's your address?",
+	}
+
+	address, err := prompt.Run()
+	if err != nil {
+		fmt.Printf("error running prompt: %v", err)
+		return "", err
+	}
+	return address, nil
 }
 
 func displayVotingInfo(vResp *client.VoterInfoResponse) {

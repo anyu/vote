@@ -93,6 +93,29 @@ type Contest struct {
 	} `json:"candidates"`
 }
 
+type LocalRepsResponse struct {
+	Offices []struct {
+		Name            string   `json:"name"`
+		DivisionID      string   `json:"divisionId"`
+		Levels          []string `json:"levels"`
+		OfficialIndices []int    `json:"officialIndices"`
+	} `json:"offices"`
+	Officials []Official `json:"officials"`
+}
+
+type Official struct {
+	Address
+	Name     string   `json:"name"`
+	Party    string   `json:"party"`
+	Phones   []string `json:"phones"`
+	Urls     []string `json:"urls"`
+	Emails   []string `json:"emails,omitempty"`
+	Channels []struct {
+		Type string `json:"type"`
+		ID   string `json:"id"`
+	} `json:"channels"`
+}
+
 func (c *client) GetUpcomingElections() (*ElectionsResponse, error) {
 	var eResp *ElectionsResponse
 	params := url.Values{}
@@ -119,6 +142,21 @@ func (c *client) GetVoterInfo(electionID, address string) (*VoterInfoResponse, e
 	}
 
 	return vResp, nil
+}
+
+func (c *client) GetLocalReps(address string) (*LocalRepsResponse, error) {
+	var locResp *LocalRepsResponse
+	params := url.Values{}
+	params.Add("address", address)
+	params.Add("levels", "locality")
+	params.Add("key", c.apiKey)
+
+	err := c.makeGetReq("representatives", params, &locResp)
+	if err != nil {
+		return nil, err
+	}
+
+	return locResp, nil
 }
 
 func (c *client) makeGetReq(ep string, params url.Values, respData interface{}) error {
