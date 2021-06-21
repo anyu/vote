@@ -55,9 +55,9 @@ func elections(c *cobra.Command, args []string) error {
 
 func solicitElectionInput(eResp *client.ElectionsResponse) (*client.Election, error) {
 	template := promptui.SelectTemplates{
-		Active:   `🗳️  {{ .Name }} |  {{ .ElectionDay.String }}`,
+		Active:   `❯️  {{ .Name }} |  {{ .ElectionDay.String }}`,
 		Inactive: `{{ .Name }} |  {{ .ElectionDay.String }}`,
-		Selected: `🗳  {{ .Name }} |  {{ .ElectionDay.String }}`,
+		Selected: `❯️️  {{ .Name }} |  {{ .ElectionDay.String }}`,
 	}
 
 	prompt := promptui.Select{
@@ -75,23 +75,39 @@ func solicitElectionInput(eResp *client.ElectionsResponse) (*client.Election, er
 }
 
 func displayVotingInfo(vResp *client.VoterInfoResponse) {
-	for _, v := range vResp.EarlyVoteSites {
+	for _, evs := range vResp.EarlyVoteSites {
 		fmt.Println()
 		fmt.Println(strings.ToUpper("Your early vote site:"))
-		fmt.Println(v.LocationName)
-		fmt.Printf("%s\n%s, %s, %s\n", v.Address.Line1, v.Address.City, v.Address.State, v.Address.Zip)
+		fmt.Println(evs.LocationName)
+		fmt.Printf("%s\n%s, %s, %s\n", evs.Address.Line1, evs.Address.City, evs.Address.State, evs.Address.Zip)
 		fmt.Println()
 		fmt.Println(strings.ToUpper("Polling hours:"))
-		fmt.Println(v.PollingHours)
+		fmt.Println(evs.PollingHours)
 	}
 
-	for _, v := range vResp.PollingLocations {
+	for _, pl := range vResp.PollingLocations {
 		fmt.Println()
 		fmt.Println(strings.ToUpper("Your vote day polling site:"))
-		fmt.Println(v.LocationName)
-		fmt.Printf("%s\n%s, %s, %s\n", v.Address.Line1, v.Address.City, v.Address.State, v.Address.Zip)
+		fmt.Println(pl.LocationName)
+		fmt.Printf("%s\n%s, %s, %s\n", pl.Address.Line1, pl.Address.City, pl.Address.State, pl.Address.Zip)
 		fmt.Println()
 		fmt.Println(strings.ToUpper("Polling hours:"))
-		fmt.Println(v.PollingHours)
+		fmt.Println(pl.PollingHours)
+	}
+	for _, c := range vResp.Contests {
+		fmt.Println()
+		fmt.Printf("Type: %s", c.Type)
+		fmt.Println()
+		fmt.Printf("Office: %s", c.Office)
+		fmt.Println()
+		fmt.Printf("District: %s", c.District.Name)
+		fmt.Println()
+		for _, can := range c.Candidates {
+			fmt.Println()
+			fmt.Println(can.Name)
+			fmt.Printf("Party: %s\n", can.Party)
+		}
+		fmt.Println()
+		fmt.Println("=======================")
 	}
 }

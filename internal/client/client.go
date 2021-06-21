@@ -49,6 +49,7 @@ type VoterInfoResponse struct {
 	EarlyVoteSites   []Location `json:"earlyVoteSites"`
 	DropOffLocations []Location `json:"dropOffLocations"`
 	State            []State    `json:"state"`
+	Contests         []Contest  `json:"contests"`
 }
 
 type Location struct {
@@ -70,6 +71,26 @@ type Address struct {
 
 type State struct {
 	Name string `json:"name"`
+}
+
+type Contest struct {
+	Type     string   `json:"type"`
+	Office   string   `json:"office"`
+	Level    []string `json:"level"`
+	Roles    []string `json:"roles"`
+	District struct {
+		Name  string `json:"name"`
+		Scope string `json:"scope"`
+		ID    string `json:"id"`
+	} `json:"district"`
+	Candidates []struct {
+		Name     string `json:"name"`
+		Party    string `json:"party"`
+		Channels []struct {
+			Type string `json:"type"`
+			ID   string `json:"id"`
+		} `json:"channels"`
+	} `json:"candidates"`
 }
 
 func (c *client) GetUpcomingElections() (*ElectionsResponse, error) {
