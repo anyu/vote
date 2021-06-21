@@ -2,6 +2,11 @@
 
 CLI app for voting information. Makes use of Google's [Civic Information API](https://developers.google.com/civic-information).
 
+### Requirements
+
+- Google API key, exported as `API_KEY`
+- Google Civic Information host (`https://www.googleapis.com/civicinfo/v2`), exported as `API_HOST`
+
 ### Build
 
 ```shell
