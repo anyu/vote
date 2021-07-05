@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(electionsCmd)
+	electionsCmd.Flags().BoolP("config", "c", false, "Use config file")
 }
 
 var electionsCmd = &cobra.Command{
@@ -25,6 +27,8 @@ var electionsCmd = &cobra.Command{
 func elections(c *cobra.Command, args []string) error {
 	cl := client.New(os.Getenv("API_HOST"), os.Getenv("API_KEY"))
 
+	useCfg, _ := c.Flags().GetBool("config")
+
 	eResp, err := cl.GetUpcomingElections()
 	if err != nil {
 		return err
@@ -35,10 +39,19 @@ func elections(c *cobra.Command, args []string) error {
 		return err
 	}
 
-	address, err := solicitAddress()
-	if err != nil {
-		return err
+	var address string
+	if !useCfg {
+		if address, err = solicitAddress(); err != nil {
+			return err
+		}
+	} else {
+		var c config
+		if err := c.getConfig(); err != nil {
+			log.Fatal(err)
+		}
+		address = c.Address
 	}
+
 	vResp, err := cl.GetVoterInfo(chosenElection.ID, address)
 	if err != nil {
 		fmt.Printf("error getting voter info: %v", err)
