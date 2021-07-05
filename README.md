@@ -4,8 +4,12 @@ CLI app for voting information. Makes use of Google's [Civic Information API](ht
 
 ### Requirements
 
-- Google API key, exported as `API_KEY`
-- Google Civic Information host (`https://www.googleapis.com/civicinfo/v2`), exported as `API_HOST`
+- Google Civic Information API enabled
+- Add the following local `.env` file
+
+```shell
+export API_KEY=<YOUR GOOGLE API KEY>
+```
 
 ### Build
 
