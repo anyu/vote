@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/fsnotify/fsnotify"
 	"github.com/ghodss/yaml"
 	"io/ioutil"
 	"log"
@@ -30,6 +31,8 @@ func Execute() {
 		log.Fatal(err)
 	}
 	fmt.Printf("config contents: %v", c)
+
+	watch()
 }
 
 func (c *config) getConfig() error {
@@ -41,4 +44,35 @@ func (c *config) getConfig() error {
 		return fmt.Errorf("unmarshal config error: %v", err)
 	}
 	return nil
+}
+
+func watch() {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer watcher.Close()
+
+	done := make(chan bool)
+
+	go func() {
+		for {
+			select {
+				case event, ok := <-watcher.Events:
+					if !ok {
+						return
+					}
+					fmt.Println("event:", event)
+				case err, ok := <- watcher.Errors:
+					if !ok {
+						return
+					}
+					fmt.Printf("error watching for errors: %v", err)
+			}
+		}
+	}()
+	if err := watcher.Add("config.yaml"); err != nil {
+		fmt.Printf("err watching file: %v", err)
+	}
+	<- done
 }
