@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const configFile = "config.yaml"
+
 var rootCmd = &cobra.Command{
 	Use:   "vote",
 	Short: "Vote is a CLI app for upcoming elections",
@@ -30,23 +32,23 @@ func Execute() {
 	if err := c.getConfig(); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("config contents: %v", c)
 
-	watch()
+	c.watch()
 }
 
 func (c *config) getConfig() error {
-	yml, err := ioutil.ReadFile("config.yaml")
+	yml, err := ioutil.ReadFile(configFile)
 	if err != nil {
 		return fmt.Errorf("read config file err: %v", err)
 	}
 	if err = yaml.Unmarshal(yml, c); err != nil {
 		return fmt.Errorf("unmarshal config error: %v", err)
 	}
+	fmt.Printf("Config contents: %v", c)
 	return nil
 }
 
-func watch() {
+func (c *config) watch() {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		fmt.Println(err)
@@ -58,11 +60,20 @@ func watch() {
 	go func() {
 		for {
 			select {
+				// watch for events
 				case event, ok := <-watcher.Events:
 					if !ok {
 						return
 					}
-					fmt.Println("event:", event)
+					// bitwise AND e.Op with fsnotify.Write
+					// if e.Op has second to last bit set
+					if event.Op&(fsnotify.Write) == fsnotify.Write {
+						fmt.Println("\nConfig changed. Reloading...")
+						if err := c.getConfig(); err != nil{
+							log.Fatal(err)
+						}
+					}
+				// watch for errors
 				case err, ok := <- watcher.Errors:
 					if !ok {
 						return
@@ -71,8 +82,10 @@ func watch() {
 			}
 		}
 	}()
-	if err := watcher.Add("config.yaml"); err != nil {
+	if err := watcher.Add(configFile); err != nil {
 		fmt.Printf("err watching file: %v", err)
 	}
 	<- done
 }
+
+// TODO: Using context w/ cancels
